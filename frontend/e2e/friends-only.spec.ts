@@ -49,7 +49,7 @@ test("uninvited visitors see the private gate", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Private game" })).toBeVisible();
 });
 
-test("admin invites three isolated friends and all four finish a game", async ({ browser, baseURL, isMobile }) => {
+test("admin invites three isolated friends, finishes a game, then replays with the same crew", async ({ browser, baseURL, isMobile }) => {
   const contexts: BrowserContext[] = [];
   const frames: string[][] = [[], [], [], []];
   const device = isMobile ? devices["Pixel 7"] : devices["Desktop Chrome"];
@@ -110,6 +110,18 @@ test("admin invites three isolated friends and all four finish a game", async ({
       await player.getByRole("button", { name: `Drop piece in column ${moves[turn] + 1}` }).click();
     }
     await expect(admin.getByRole("heading", { name: "Victory!" })).toBeVisible();
+
+    const originalUrls = players.map((player) => player.url());
+    await admin.getByRole("button", { name: /Play Again/ }).click();
+    await expect(admin.getByRole("heading", { name: "Victory!" })).not.toBeVisible();
+    for (let index = 0; index < players.length; index += 1) {
+      const player = players[index];
+      await expect(player).toHaveURL(originalUrls[index]);
+      await expect(player.getByRole("region", { name: "Your private joker hand" }).locator(".joker-card")).toHaveCount(2);
+    }
+    await expect(admin.getByText("Your turn", { exact: true })).toBeVisible();
+    await admin.getByRole("button", { name: "Drop piece in column 1" }).click();
+    await expect(players[1].getByText("Your turn", { exact: true })).toBeVisible();
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
   }
