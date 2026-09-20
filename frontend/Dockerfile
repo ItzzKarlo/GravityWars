@@ -8,7 +8,9 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# Next.js projects without static assets have no public/ directory.
+# Keep the runtime COPY valid while preserving any future public assets.
+RUN mkdir -p public && npm run build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
