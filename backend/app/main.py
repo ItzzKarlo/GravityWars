@@ -27,8 +27,8 @@ from app.auth.store import (
 )
 from app.config import Settings
 from app.game.engine import change_gravity, play_turn
-from app.game.jokers import gravity_is_locked, play_joker
-from app.game.models import GameStatus, GravityDirection, JokerType
+from app.game.jokers import deal_jokers, gravity_is_locked, play_joker
+from app.game.models import GameState, GameStatus, GravityDirection, JokerType
 from app.lobby.manager import LobbyManager
 from app.websocket.manager import ConnectionHub
 
@@ -631,6 +631,32 @@ def create_app(
                                     "All four players need active access"
                                 )
                             lobbies.start_lobby(lobby.id, token)
+                        elif action == "rematch":
+                            if player.id != lobby.host_player_id:
+                                raise PermissionError("Only the host can start a rematch")
+                            if lobby.game.status != GameStatus.FINISHED:
+                                raise ValueError("The current match is not finished")
+                            if len(lobby.game.players) != 4:
+                                raise ValueError("Four players are required")
+                            invited_players = {
+                                item.id for item in lobby.game.players
+                                if item.id != lobby.host_player_id
+                            }
+                            if not invited_players.issubset(
+                                access.active_guest_player_ids(lobby.id)
+                            ):
+                                raise ValueError(
+                                    "All four players need active access"
+                                )
+                            previous_task = gravity_tasks.get(lobby.id)
+                            if previous_task is not None and not previous_task.done():
+                                previous_task.cancel()
+                            hub.timer_event(lobby.id).clear()
+                            for participant in lobby.game.players:
+                                participant.jokers.clear()
+                            lobby.game = GameState(players=lobby.game.players)
+                            deal_jokers(lobby.game.players)
+                            lobby.game.status = GameStatus.PLAYING
                         elif action == "drop":
                             lane = message.get("lane")
                             if type(lane) is not int:
@@ -667,7 +693,7 @@ def create_app(
                         )
                         continue
                     await publish(lobby.id)
-                    if action == "start":
+                    if action in ("start", "rematch"):
                         for other in lobby.game.players:
                             await hub.send_to(
                                 lobby.id,
