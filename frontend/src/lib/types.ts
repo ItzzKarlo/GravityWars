@@ -76,6 +76,7 @@ export type ServerMessage =
 export type ClientMessage =
   | { type: "auth"; token: string }
   | { type: "start" }
+  | { type: "rematch" }
   | { type: "drop"; lane: number }
   | { type: "rename"; username: string }
   | {
