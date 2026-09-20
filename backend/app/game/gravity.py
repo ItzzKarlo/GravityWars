@@ -1,3 +1,4 @@
+
 from .models import Board, GravityDirection
 
 
@@ -7,9 +8,15 @@ def apply_gravity(
 ) -> Board:
     """
     Apply gravity to the board.
-    Pieces fall in the specified direction while preserving their relative order.
-    Returns a NEW board without modifying the original.
+
+    Pieces fall in the specified direction while preserving
+    their relative order.
+
+    Returns a new board without modifying the original.
     """
+
+    if not board or not board[0]:
+        raise ValueError("Board cannot be empty")
 
     rows = len(board)
     columns = len(board[0])
@@ -19,28 +26,23 @@ def apply_gravity(
         for _ in range(rows)
     ]
 
-    # Horizontal Gravity
+    # Horizontal gravity
     if direction in (GravityDirection.LEFT, GravityDirection.RIGHT):
         for row in range(rows):
             pieces = [
-                piece 
-                for piece in board[row] 
+                piece
+                for piece in board[row]
                 if piece is not None
             ]
 
             empty_spaces = columns - len(pieces)
 
             if direction == GravityDirection.LEFT:
-                new_board[row] = (
-                    pieces + [None] * empty_spaces
-                )
-
+                new_board[row] = pieces + [None] * empty_spaces
             else:
-                new_board[row] = (
-                [None] * empty_spaces + pieces
-            )
-    
-    # Vertical Gravity
+                new_board[row] = [None] * empty_spaces + pieces
+
+    # Vertical gravity
     elif direction in (GravityDirection.UP, GravityDirection.DOWN):
         for column in range(columns):
             pieces = [
@@ -53,11 +55,11 @@ def apply_gravity(
                 start_row = 0
             else:
                 start_row = rows - len(pieces)
-            
+
             for index, piece in enumerate(pieces):
                 new_board[start_row + index][column] = piece
-    
+
     else:
-        raise ValueError(f'Invalid gravity direction: {direction}')
-    
+        raise ValueError(f"Invalid gravity direction: {direction}")
+
     return new_board
