@@ -76,6 +76,12 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
     if (sendAction({ type: "drop", lane })) setPendingDropState(stateKey);
   };
 
+  const playAgain = () => {
+    setSelection(null);
+    setPendingDropState(null);
+    if (!sendAction({ type: "rematch" })) return;
+  };
+
   if (!localPlayer) return <div className="fatal-panel">Your player is no longer part of this lobby.</div>;
 
   return (
@@ -127,7 +133,11 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
               <span className="result-kicker">Final result</span>
               <h1>{winners.length ? (lobby.winner_ids.includes(playerId) ? "Victory!" : `${winners.join(" & ")} won`) : "Stalemate"}</h1>
               <p>{winners.length ? (lobby.winner_ids.includes(playerId) ? "Four aligned. Gravity conquered." : "The winning line survived the chaos.") : "Every space is full and gravity calls it even."}</p>
-              <Link href="/" className="button button-primary">Back to home</Link>
+              {role === "admin" ? (
+                <button type="button" className="button button-primary" onClick={playAgain} disabled={!connected}>Play Again — same crew</button>
+              ) : (
+                <p>Waiting for the host to start another round. Your invitation and seat remain valid.</p>
+              )}
             </div>
           )}
         </div>
