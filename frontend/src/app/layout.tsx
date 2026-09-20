@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import SessionHeartbeat from "@/components/SessionHeartbeat";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Gravity Wars",
   description: "A four-player game of shifting gravity and tactical chaos.",
 };
+
+export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -13,5 +16,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><SessionHeartbeat />{children}</body></html>;
 }

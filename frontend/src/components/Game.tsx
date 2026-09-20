@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { ClientMessage, ConnectionState, JokerType, LobbyState, Position } from "@/lib/types";
+import type { AccessRole, ClientMessage, ConnectionState, JokerType, LobbyState, Position } from "@/lib/types";
 import GameBoard from "./GameBoard";
 import GravityIndicator from "./GravityIndicator";
 import JokerHand, { getJokerInfo } from "./JokerHand";
@@ -15,12 +15,15 @@ interface GameProps {
   connection: ConnectionState;
   serverError: { id: number; message: string } | null;
   send: (message: ClientMessage) => boolean;
+  role: AccessRole;
+  onLeave?: () => Promise<void>;
+  onRevokePlayer?: (playerId: string) => Promise<void>;
 }
 
-export default function Game({ lobby, playerId, hand, connection, serverError, send }: GameProps) {
+export default function Game({ lobby, playerId, hand, connection, serverError, send, role, onLeave, onRevokePlayer }: GameProps) {
   const [selection, setSelection] = useState<{ joker: JokerType; targets: Position[] } | null>(null);
   const [pendingJoker, setPendingJoker] = useState<JokerType | null>(null);
-  const [pendingDrop, setPendingDrop] = useState(false);
+  const [pendingDropState, setPendingDropState] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [dismissedError, setDismissedError] = useState(0);
 
@@ -29,6 +32,7 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
   const isMyTurn = currentPlayer?.id === playerId;
   const connected = connection === "open";
   const finished = lobby.status === "finished";
+  const stateKey = `${lobby.current_turn}:${lobby.gravity}:${JSON.stringify(lobby.board)}`;
 
   const winners = useMemo(
     () => lobby.winner_ids.map((id) => lobby.players.find((player) => player.id === id)?.username).filter(Boolean) as string[],
@@ -69,7 +73,13 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
   };
 
   const drop = (lane: number) => {
-    if (sendAction({ type: "drop", lane })) setPendingDrop(true);
+    if (sendAction({ type: "drop", lane })) setPendingDropState(stateKey);
+  };
+
+  const playAgain = () => {
+    setSelection(null);
+    setPendingDropState(null);
+    if (!sendAction({ type: "rematch" })) return;
   };
 
   if (!localPlayer) return <div className="fatal-panel">Your player is no longer part of this lobby.</div>;
@@ -81,7 +91,7 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
         <div className="game-header-center">
           <GravityIndicator direction={lobby.gravity} locked={lobby.gravity_locked} />
         </div>
-        <div className="game-code"><span>Lobby</span><strong>{lobby.pin}</strong></div>
+        <div className="game-code"><span>{role === "admin" ? "Private host" : "Invited player"}</span>{onLeave ? <button type="button" className="game-leave" onClick={() => void onLeave()}>Leave</button> : <strong>ADMIN</strong>}</div>
       </header>
 
       {(connection === "reconnecting" || connection === "connecting") && (
@@ -103,6 +113,7 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
           localPlayerId={playerId}
           finished={finished}
           className="players-left"
+          onRevokePlayer={onRevokePlayer ? (id) => void onRevokePlayer(id) : undefined}
         />
 
         <div className="board-column">
@@ -110,7 +121,7 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
             board={lobby.board}
             gravity={lobby.gravity}
             canDrop={isMyTurn && connected && !finished && !selection}
-            pendingDrop={pendingDrop && isMyTurn && !finished && !serverError}
+            pendingDrop={pendingDropState === stateKey && isMyTurn && !finished && !serverError}
             selection={selection}
             localColor={localPlayer.color}
             onDrop={drop}
@@ -122,7 +133,11 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
               <span className="result-kicker">Final result</span>
               <h1>{winners.length ? (lobby.winner_ids.includes(playerId) ? "Victory!" : `${winners.join(" & ")} won`) : "Stalemate"}</h1>
               <p>{winners.length ? (lobby.winner_ids.includes(playerId) ? "Four aligned. Gravity conquered." : "The winning line survived the chaos.") : "Every space is full and gravity calls it even."}</p>
-              <Link href="/" className="button button-primary">Back to home</Link>
+              {role === "admin" ? (
+                <button type="button" className="button button-primary" onClick={playAgain} disabled={!connected}>Play Again — same crew</button>
+              ) : (
+                <p>Waiting for the host to start another round. Your invitation and seat remain valid.</p>
+              )}
             </div>
           )}
         </div>
@@ -133,11 +148,12 @@ export default function Game({ lobby, playerId, hand, connection, serverError, s
           localPlayerId={playerId}
           finished={finished}
           className="players-right"
+          onRevokePlayer={onRevokePlayer ? (id) => void onRevokePlayer(id) : undefined}
         />
       </section>
 
       <div className="mobile-player-list">
-        <PlayerList players={lobby.players} currentTurn={lobby.current_turn} localPlayerId={playerId} finished={finished} />
+        <PlayerList players={lobby.players} currentTurn={lobby.current_turn} localPlayerId={playerId} finished={finished} onRevokePlayer={onRevokePlayer ? (id) => void onRevokePlayer(id) : undefined} />
       </div>
 
       <JokerHand

@@ -32,6 +32,9 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+secrets/
+playwright-report/
+test-results/
 
 # IDE / OS
 .idea/

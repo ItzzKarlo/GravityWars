@@ -1,0 +1,29 @@
+# Merge this site block into the existing shared Caddy configuration. Do not
+# replace other site blocks and do not expose either application container.
+gravity-wars.karloverse.dev {
+	encode zstd gzip
+
+	# Caddy rejects oversized requests before FastAPI parses a body.
+	request_body {
+		max_size 16KB
+	}
+
+	@gravitywars_api path /api/* /ws/*
+	reverse_proxy @gravitywars_api gravitywars-api:8000
+	reverse_proxy gravitywars-web:3000
+
+	header {
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Caddy's normal access log does not include request bodies or Cookie
+	# headers. Invitation secrets are URL fragments and never reach Caddy.
+	log {
+		output file /var/log/caddy/gravity-wars.access.log
+		format json
+	}
+}

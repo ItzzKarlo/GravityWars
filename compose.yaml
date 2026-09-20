@@ -1,0 +1,60 @@
+name: gravitywars
+
+services:
+  api:
+    container_name: gravitywars-api
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      ACCESS_DATABASE_PATH: /data/access.sqlite3
+      ADMIN_PASSWORD_HASH_FILE: /run/secrets/admin_password_hash
+      ALLOWED_ORIGINS: https://gravity-wars.karloverse.dev
+      COOKIE_SECURE: "true"
+    secrets:
+      - admin_password_hash
+    volumes:
+      - access_data:/data
+    networks:
+      - caddy
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  web:
+    container_name: gravitywars-web
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    networks:
+      - caddy
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  access_data:
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK_NAME:-caddy}
+
+secrets:
+  admin_password_hash:
+    file: ./secrets/admin_password_hash
