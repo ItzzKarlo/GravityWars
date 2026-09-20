@@ -45,6 +45,26 @@ export interface LobbyResponse {
   lobby: LobbyState;
   player_id: string;
   token: string;
+  invitations?: Invitation[];
+}
+
+export type AccessRole = "admin" | "guest";
+
+export interface AccessSessionState {
+  authenticated: boolean;
+  role: AccessRole | null;
+  lobby_id?: string | null;
+  player_id?: string | null;
+}
+
+export type InvitationStatus = "unused" | "used" | "revoked" | "expired";
+
+export interface Invitation {
+  id: string;
+  slot: number;
+  expires_at: number;
+  status: InvitationStatus;
+  secret?: string;
 }
 
 export type ServerMessage =

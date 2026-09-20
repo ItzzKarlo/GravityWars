@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "A four-player game of shifting gravity and tactical chaos.",
 };
 
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

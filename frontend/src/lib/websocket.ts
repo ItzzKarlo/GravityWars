@@ -44,7 +44,7 @@ export class LobbySocket {
 
     socket.addEventListener("close", (event) => {
       if (generation !== this.generation || this.stopped) return;
-      if (event.code === 4401) {
+      if ([4401, 4403, 4004].includes(event.code)) {
         this.options.onState("closed");
         this.options.onAuthFailure();
         return;

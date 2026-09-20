@@ -98,6 +98,22 @@ class ConnectionHub:
         for player_id in player_ids:
             await self.send_to(lobby_id, player_id, message)
 
+    async def close_player(
+        self,
+        lobby_id: str,
+        player_id: str,
+        code: int = 4403,
+    ) -> None:
+        """Immediately terminate a revoked player's current connection."""
+        websocket = self.sockets.get(lobby_id, {}).get(player_id)
+        if websocket is None:
+            return
+        self.detach(lobby_id, player_id, websocket)
+        try:
+            await websocket.close(code=code)
+        except (RuntimeError, OSError):
+            pass
+
     def forget(self, lobby_id: str) -> None:
         """Discard internal resources for an expired lobby."""
         self.sockets.pop(lobby_id, None)

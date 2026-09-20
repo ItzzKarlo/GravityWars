@@ -175,6 +175,25 @@ class LobbyManager:
         lobby = self.get_lobby(lobby_id)
         self._touch(lobby)
 
+    def active_lobby_ids(self) -> set[str]:
+        """Return IDs after removing expired in-memory lobbies."""
+        self.cleanup_expired()
+        return set(self._lobbies)
+
+    def delete_lobby(self, lobby_id: str) -> None:
+        """Remove a just-created lobby if access setup fails."""
+        lobby = self._lobbies.get(lobby_id)
+        if lobby is not None:
+            self._delete(lobby)
+
+    def token_for_player(self, lobby_id: str, player_id: str) -> str:
+        """Return a private game token only to an already-authorized caller."""
+        lobby = self.get_lobby(lobby_id)
+        token = lobby.session_tokens.get(player_id)
+        if token is None:
+            raise KeyError("Player not found")
+        return token
+
     # -----------------------------------------
     # CREATE LOBBY
     # -----------------------------------------
