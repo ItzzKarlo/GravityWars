@@ -186,13 +186,16 @@ def create_app(
         return session
 
     def set_session_cookies(response: Response, session: SessionMaterial) -> None:
-        max_age = max(0, int(session.expires_at - time.time()))
         common = {
             "secure": settings.cookie_secure,
             "samesite": "strict",
             "path": "/",
-            "max_age": max_age,
         }
+        # A friend keeps browser-session cookies while their server-side
+        # authorization slides with activity. A fixed Max-Age would silently
+        # discard the cookie mid-match even though the session was renewed.
+        if session.role == "admin":
+            common["max_age"] = max(0, int(session.expires_at - time.time()))
         response.set_cookie(
             SESSION_COOKIE, session.token, httponly=True, **common
         )
