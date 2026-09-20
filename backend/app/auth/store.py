@@ -189,9 +189,22 @@ class AccessStore:
                          AND expires_at > ?""",
                 (digest(token), now),
             ).fetchone()
-        if row is None:
-            return None
-        return AccessSession(**dict(row))
+            if row is None:
+                return None
+            session = dict(row)
+            if session["role"] == "guest":
+                # A redeemed invitation expires after 30 minutes, but a
+                # friend's *session* expires only after inactivity. This
+                # update never resurrects an expired/revoked session.
+                new_expiry = now + self.settings.guest_session_seconds
+                database.execute(
+                    """UPDATE sessions SET expires_at = ?
+                       WHERE token_hash = ? AND role = 'guest'
+                             AND revoked_at IS NULL AND expires_at > ?""",
+                    (new_expiry, session["token_hash"], now),
+                )
+                session["expires_at"] = new_expiry
+        return AccessSession(**session)
 
     def validate_csrf(self, token: str, csrf: str | None) -> bool:
         if not csrf:
