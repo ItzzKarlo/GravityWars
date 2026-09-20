@@ -72,3 +72,5 @@ class GameState:
     status: GameStatus = GameStatus.WAITING
 
     winner_ids: list[str] = field(default_factory=list)
+
+    gravity_locked_until: float = 0.0
